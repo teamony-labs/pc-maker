@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PC BUILD LAB 3D</title>
+<style>
+:root{
+  --bg:#0b0e14; --panel:#121722; --panel2:#182031; --line:#263043;
+  --text:#e6ebf2; --muted:#8d99ab; --accent:#4cc9f0; --ok:#7bf1a8;
+  --danger:#ff6b6b; --warn:#ffc857;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:"Segoe UI","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+#app{display:grid;height:100vh;grid-template-columns:380px 1fr;grid-template-rows:56px 1fr;
+  grid-template-areas:"head head" "side view"}
+header{grid-area:head;display:flex;align-items:center;gap:14px;padding:0 18px;
+  background:#0e131c;border-bottom:1px solid var(--line)}
+.logo{font-weight:700;letter-spacing:.1em;white-space:nowrap}
+.logo b{color:var(--accent)}
+#dots{display:flex;gap:4px;flex:1;max-width:460px;min-width:120px}
+.dot{flex:1;height:6px;border-radius:3px;background:#222b3a;transition:background .3s}
+.dot.done{background:var(--ok)} .dot.cur{background:var(--accent)}
+.pills{display:flex;gap:8px;margin-left:auto}
+.pill{font-size:13px;color:var(--muted);padding:4px 10px;border:1px solid var(--line);border-radius:999px;white-space:nowrap}
+.pill strong{color:var(--text);font-variant-numeric:tabular-nums}
+aside{grid-area:side;overflow:auto;padding:20px;background:var(--panel);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:14px}
+#stepNo{font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:700}
+#stepTitle{margin:2px 0 0;font-size:22px;line-height:1.35}
+#stepDesc{margin:0;color:#c3ccd8;line-height:1.75;font-size:14.5px}
+.tip{background:#13202a;border:1px solid #1e3a48;border-radius:10px;padding:12px 14px;font-size:13.5px;line-height:1.7;color:#bfe9f7}
+.tip::before{content:"ポイント";display:block;font-size:11px;letter-spacing:.12em;color:var(--accent);font-weight:700;margin-bottom:4px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.optLabel{font-size:12px;color:var(--muted);letter-spacing:.08em}
+.opt{position:relative;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s}
+.opt:hover{border-color:#3b4a63}
+.opt.sel{border-color:var(--accent);background:#15283a}
+.opt.single{cursor:default}
+.opt .n{font-weight:600;font-size:15px}
+.opt .s{font-size:12.5px;color:var(--muted);margin-top:3px}
+.opt.bad{opacity:.55}
+.cab{display:flex;align-items:center;gap:10px}
+.cab .st{margin-left:auto;font-size:11.5px;border-radius:999px;padding:2px 9px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.cab.done .st{border-color:var(--ok);color:var(--ok)}
+.cab.done{opacity:.7}
+.cab .sw{width:10px;height:34px;border-radius:3px;background:#2c3038;flex:0 0 auto}
+.opt.bad::after{content:"合わない";position:absolute;right:12px;top:12px;font-size:11px;color:var(--danger);
+  border:1px solid var(--danger);border-radius:999px;padding:1px 8px}
+#install{margin-top:2px;background:var(--accent);color:#06222d;border:0;border-radius:10px;padding:13px;
+  font-weight:700;font-size:15px;cursor:pointer;transition:filter .15s,opacity .15s}
+#install:hover{filter:brightness(1.1)}
+#install:disabled{opacity:.4;cursor:not-allowed}
+#install.power{background:var(--ok);color:#062615}
+.hint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:-4px}
+#spec{display:none;border:1px dashed #33405a;border-radius:10px;padding:10px 14px;font-size:12.5px;line-height:1.6;color:#aab6c6}
+#spec .row{display:flex;gap:10px;padding:3px 0;border-top:1px solid #1f2838}
+#spec .row:first-of-type{border-top:0}
+#spec .k{flex:0 0 64px;color:var(--muted)}
+#spec .v{color:var(--text);font-weight:600}
+#spec .v small{display:block;font-weight:400;color:#8d99ab;font-size:11.5px;line-height:1.5}
+#spec .h{font-size:11px;letter-spacing:.12em;color:var(--muted)}
+#view{grid-area:view;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%,#16202f 0%,#0b0e14 70%)}
+canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+#toast{position:absolute;left:50%;top:16px;transform:translate(-50%,-20px);opacity:0;pointer-events:none;
+  max-width:min(560px,90%);padding:12px 18px;border-radius:10px;font-size:14px;line-height:1.6;
+  background:#1b2433;border:1px solid var(--line);transition:all .25s;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.error{border-color:var(--danger);background:#2a1418;color:#ffd6d6}
+#toast.ok{border-color:var(--ok);background:#12261b;color:#d7ffe6}
+#toast.warn{border-color:var(--warn);background:#2a2412;color:#fff0c8}
+#tooltip{position:absolute;pointer-events:none;padding:4px 10px;border-radius:6px;font-size:12.5px;
+  background:rgba(12,16,24,.92);border:1px solid var(--line);display:none;white-space:nowrap}
+#glassBtn{position:absolute;right:12px;top:12px;font-size:12.5px;cursor:pointer;
+  background:rgba(12,16,24,.75);border:1px solid var(--line);border-radius:8px;padding:7px 12px;color:var(--text)}
+#glassBtn:hover{border-color:#3b4a63}
+#help{position:absolute;right:12px;bottom:12px;font-size:12px;color:var(--muted);
+  background:rgba(12,16,24,.7);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+#boot{position:absolute;inset:0;background:#05070a;display:none;padding:40px;
+  font-family:Consolas,"Courier New",monospace;color:#9effb8;font-size:15px;line-height:1.9;white-space:pre-wrap}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,8,12,.55)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 32px;width:min(420px,90%);text-align:center}
+.card h2{margin:0 0 6px;font-size:24px}
+#fSpec{text-align:left;font-size:13px;margin-bottom:20px}
+#fSpec .row{display:flex;gap:10px;padding:5px 0;border-top:1px solid #1f2838}
+#fSpec .k{flex:0 0 70px;color:var(--muted)}
+#fSpec .v{font-weight:600}
+.stats{display:flex;justify-content:center;gap:24px;color:var(--muted);font-size:14px;margin-bottom:20px}
+.stats strong{display:block;color:var(--text);font-size:20px}
+.btns{display:flex;gap:10px;justify-content:center}
+.btns button{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:10px 16px;cursor:pointer}
+.btns button.pri{background:var(--accent);border-color:var(--accent);color:#06222d;font-weight:700}
+@media (max-width:820px){
+  #app{height:auto;grid-template-columns:1fr;grid-template-rows:auto 56vh auto;grid-template-areas:"head" "view" "side"}
+  header{flex-wrap:wrap;padding:10px 16px;gap:8px}
+  #dots{order:3;flex-basis:100%;max-width:none}
+  aside{border-right:0;border-top:1px solid var(--line);padding:16px}
+  #help{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">PC BUILD <b>LAB</b> 3D</div>
+    <div id="dots"></div>
+    <div class="pills">
+      <span class="pill">消費電力目安 <strong id="watt">0W</strong></span>
+    </div>
+  </header>
+  <aside>
+    <div>
+      <div id="stepNo"></div>
+      <h1 id="stepTitle"></h1>
+    </div>
+    <p id="stepDesc"></p>
+    <div class="tip" id="stepTip"></div>
+    <div id="spec"></div>
+    <div class="opts" id="opts"></div>
+    <button id="install">取り付ける</button>
+    <div class="hint" id="hint">3D画面で光っている部品をクリックしても取り付けられます</div>
+  </aside>
+  <div id="view">
+    <canvas id="c" tabindex="0"></canvas>
+    <div id="toast"></div>
+    <div id="tooltip"></div>
+    <button id="glassBtn">ガラスパネルを付ける</button>
+    <div id="help">ドラッグ: 回転 ／ ホイール: ズーム ／ 右ドラッグ: 移動</div>
+    <div id="boot"></div>
+    <div id="finish">
+      <div class="card">
+        <h2>完成！</h2>
+        <div style="color:var(--muted);font-size:14px;margin-bottom:14px">あなたのPCは無事に起動しました</div>
+        <div id="fSpec"></div>
+        <div class="btns">
+          <button id="look">PCを眺める</button>
+          <button class="pri" id="again">もう一度組み立てる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="lib/three.min.js"></script>
+<script src="lib/OrbitControls.js"></script>
+<script src="lib/RoundedBoxGeometry.js"></script>
+<script src="lib/RoomEnvironment.js"></script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+if (THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
+
+/* ================= renderer / scene ================= */
+const canvas = $('#c'), view = $('#view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 600);
+camera.position.set(40, 26, 80);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 12; controls.maxDistance = 170;
+controls.maxPolarAngle = Math.PI * 0.62;
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view);
+
+scene.add(new THREE.HemisphereLight(0xdfe7ff, 0x14181f, 0.35));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(30, 60, 70); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -38, right: 38, top: 38, bottom: -38, near: 10, far: 200 });
+key.shadow.bias = -0.0004; key.shadow.normalBias = 0.03;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x8fb0ff, 0.35); fill.position.set(-60, 10, 30); scene.add(fill);
+const inner = new THREE.PointLight(0xffffff, 0.35, 70); inner.position.set(0, 6, 12); scene.add(inner);
+const rgbLights = [[16, 8, 3], [-4, -7, 5], [-10, 20, 2]].map(p => {
+  const l = new THREE.PointLight(0xffffff, 0, 34, 2); l.position.set(...p); scene.add(l); return l;
+});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
+  new THREE.MeshStandardMaterial({ color: 0x0c1017, roughness: .6, metalness: .2 }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = -24.95; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(220, 44, 0x1d2940, 0x131a26); grid.position.y = -24.9;
+grid.material.transparent = true; grid.material.opacity = .5; scene.add(grid);
+
+/* ================= helpers ================= */
+function mat(c, r = .5, m = .2, extra = {}) { return new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: r, metalness: m }, extra)); }
+const M = {
+  body: mat(0x1c1f24, .42, .65), tray: mat(0x202329, .5, .6), inner: mat(0x1a1d22, .55, .5),
+  chrome: mat(0xe6e9ee, .12, 1), metal: mat(0xc2c7cf, .28, .9), nickel: mat(0xd5d8dc, .22, .95),
+  dark: mat(0x121418, .55, .3), pcbEdge: mat(0x0f1215, .6, .1), green: mat(0x18392a, .55, .1),
+  slot: mat(0x24272d, .45, .1), slotW: mat(0xd5d9df, .5, .05), copper: mat(0xc7773a, .25, 1),
+  gold: mat(0xd9b04a, .25, 1), alu: mat(0x9aa1ab, .32, .9), aluDark: mat(0x3a3f47, .35, .85),
+  rubber: mat(0x0a0b0d, .85, 0), shroud: mat(0x2a2e35, .35, .7), backplate: mat(0x17191d, .35, .8),
+  psu: mat(0x15171a, .45, .6), choke: mat(0x34373d, .5, .5), cap: mat(0x1d1f23, .3, .7),
+  blade: mat(0x1c1f25, .45, .1, { transparent: true, opacity: .92, side: THREE.DoubleSide })
+};
+function box(w, h, d, m, x = 0, y = 0, z = 0, p) {
+  const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); if (p) p.add(o); return o;
+}
+function rbox(w, h, d, m, x = 0, y = 0, z = 0, p, r = .15) {
+  r = Math.min(r, Math.min(w, h, d) / 2 - .001);
+  const geo = r > .02 ? new THREE.RoundedBoxGeometry(w, h, d, 2, r) : new THREE.BoxGeometry(w, h, d);
+  const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); if (p) p.add(o); return o;
+}
+function cyl(r, h, m, x, y, z, p, axis = 'z', seg = 24) {
+  const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), m);
+  if (axis === 'z') o.rotation.x = Math.PI / 2; else if (axis === 'x') o.rotation.z = Math.PI / 2;
+  o.position.set(x, y, z); if (p) p.add(o); return o;
+}
+function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+function toTex(c, srgb = true) { const t = new THREE.CanvasTexture(c); if (srgb) t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t; }
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function label(w, h, lines, { bg = '#0f1216', fg = '#e8ecf2', accent = null, metal = 0 } = {}, x, y, z, p) {
+  const [c, g] = mkCanvas(512, Math.max(32, Math.round(512 * h / w)));
+  if (bg) { g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); }
+  if (accent) { g.fillStyle = accent; g.fillRect(0, c.height * .9, c.width, c.height * .1); }
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const total = lines.reduce((a, l) => a + l[1], 0);
+  let yy = c.height * (1 - total) / 2;
+  lines.forEach(([t, s, col]) => {
+    const px = c.height * s;
+    g.font = `700 ${px * .8}px "Segoe UI",Arial,sans-serif`; g.fillStyle = col || fg;
+    g.fillText(t, c.width / 2, yy + px / 2); yy += px;
+  });
+  const m = new THREE.MeshStandardMaterial({ map: toTex(c), roughness: .45, metalness: metal,
+    transparent: !bg, polygonOffset: true, polygonOffsetFactor: -2 });
+  const o = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+  o.position.set(x, y, z); if (p) p.add(o); return o;
+}
+
+/* --- LEDs: emissive mesh + additive halo --- */
+function ledMat() {
+  const m = new THREE.MeshStandardMaterial({ color: 0x1c1f24, emissive: 0x000000, roughness: .35 });
+  m.userData.led = true; return m;
+}
+function haloMat() {
+  return new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false });
+}
+function ledMesh(geo, haloGeo, p, x = 0, y = 0, z = 0, base = 0x1c1f24) {
+  const m = ledMat(); m.color.set(base);
+  const o = new THREE.Mesh(geo, m); o.position.set(x, y, z);
+  if (haloGeo) { const hm = haloMat(); const h = new THREE.Mesh(haloGeo, hm); o.add(h); o.userData.halo = hm; }
+  if (p) p.add(o); return o;
+}
+const ledBox = (w, h, d, p, x, y, z, base) =>
+  ledMesh(new THREE.BoxGeometry(w, h, d), new THREE.BoxGeometry(w + .7, h + .7, d + .7), p, x, y, z, base);
+
+/* --- procedural textures --- */
+const texCache = {};
+function meshAlpha(scale) {
+  const [c, g] = mkCanvas(64, 64);
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#000';
+  [[16, 16], [48, 16], [0, 48], [32, 48], [64, 48]].forEach(([x, y]) => { g.beginPath(); g.arc(x, y, 11, 0, Math.PI * 2); g.fill(); });
+  const t = toTex(c, false); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(scale[0], scale[1]); return t;
+}
+function meshMat(rep, color = 0x1b1e23) {
+  return mat(color, .4, .7, { alphaMap: meshAlpha(rep), alphaTest: .5, side: THREE.DoubleSide });
+}
+function sleeveTex(len) {
+  if (!texCache.sleeve) {
+    const [c, g] = mkCanvas(64, 64);
+    g.fillStyle = '#0f1013'; g.fillRect(0, 0, 64, 64);
+    g.lineWidth = 5;
+    for (let i = -64; i < 128; i += 16) {
+      g.strokeStyle = '#2c3038'; g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 64, 64); g.stroke();
+      g.strokeStyle = '#22252b'; g.beginPath(); g.moveTo(i + 64, 0); g.lineTo(i, 64); g.stroke();
+    }
+    texCache.sleeve = c;
+  }
+  const t = toTex(texCache.sleeve); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(len * 1.4, 3); return t;
+}
+/* --- fans --- */
+const geoCache = {};
+function fanFrameGeo(s, d) {
+  const k = 'f' + s; if (geoCache[k]) return geoCache[k];
+  const r = s * .09, h = s / 2, sh = new THREE.Shape();
+  sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.quadraticCurveTo(h, -h, h, -h + r);
+  sh.lineTo(h, h - r); sh.quadraticCurveTo(h, h, h - r, h); sh.lineTo(-h + r, h);
+  sh.quadraticCurveTo(-h, h, -h, h - r); sh.lineTo(-h, -h + r); sh.quadraticCurveTo(-h, -h, -h + r, -h);
+  const hole = new THREE.Path(); hole.absarc(0, 0, s * .465, 0, Math.PI * 2, true); sh.holes.push(hole);
+  const g = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: true, bevelSize: .06, bevelThickness: .06, bevelSegments: 2, curveSegments: 40 });
+  g.translate(0, 0, -d / 2); return (geoCache[k] = g);
+}
+function bladeGeo(s) {
+  const k = 'b' + s; if (geoCache[k]) return geoCache[k];
+  const R = s * .45, r0 = s * .12, sh = new THREE.Shape();
+  sh.moveTo(r0, -R * .07);
+  sh.quadraticCurveTo(R * .6, -R * .3, R * .98, -R * .14);
+  sh.quadraticCurveTo(R * 1.03, R * .1, R * .86, R * .26);
+  sh.quadraticCurveTo(R * .5, R * .22, r0, R * .12);
+  return (geoCache[k] = new THREE.ExtrudeGeometry(sh, { depth: .05, bevelEnabled: false, curveSegments: 10 }));
+}
+function makeFan(s, { frame = true, led = true, blades = 9 } = {}) {
+  const g = new THREE.Group(), fm = mat(0x121418, .5, .2), d = s * .2;
+  if (frame) {
+    g.add(new THREE.Mesh(fanFrameGeo(s, d), fm));
+    for (let i = 0; i < 3; i++) { const st = box(s * .45, s * .03, s * .03, fm, 0, 0, -d / 2 + .1, g); st.rotation.z = i * Math.PI * 2 / 3 + .4; st.translateX(s * .24); }
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => cyl(s * .03, d + .02, M.rubber, a * s * .41, b * s * .41, 0, g, 'z', 10));
+  } else {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(s * .48, s * .03, 8, 48), fm); g.add(ring);
+  }
+  if (led) {
+    const R = s * .455, tb = s * .018;
+    ledMesh(new THREE.TorusGeometry(R, tb, 8, 64), new THREE.TorusGeometry(R, tb * 4, 8, 64), g, 0, 0, d * .5);
+  }
+  const rotor = new THREE.Group(); rotor.userData.rotor = true; g.add(rotor);
+  cyl(s * .12, d * .7, fm, 0, 0, 0, rotor, 'z', 32);
+  const cap = label(s * .17, s * .17, [['', .1]], { bg: '#1e222a', accent: '#4cc9f0' }, 0, 0, d * .36, rotor);
+  cap.geometry = new THREE.CircleGeometry(s * .1, 32);
+  for (let i = 0; i < blades; i++) {
+    const piv = new THREE.Group(); piv.rotation.z = i * Math.PI * 2 / blades;
+    const b = new THREE.Mesh(bladeGeo(s), M.blade); b.rotation.x = .5; piv.add(b); rotor.add(piv);
+  }
+  return g;
+}
+const named = (g, name) => { g.userData.name = name; return g; };
+function shadowify(obj) {
+  obj.traverse(o => {
+    if (!o.isMesh) return;
+    const m = Array.isArray(o.material) ? o.material[0] : o.material;
+    if (m.transparent || m.blending === THREE.AdditiveBlending) return;
+    o.castShadow = o.receiveShadow = true;
+  });
+  return obj;
+}
+
+/* ================= catalog ================= */
+const CASES = [
+  { id: 'aero', name: 'AERO ミドルタワー', D: 44.6, H: 46.6, sideZ: 11.3, forms: ['ATX', 'mATX'], color: 0x1c1f24, front: 'mesh', rearFan: 12, desc: '黒・メッシュ前面の定番ケース' },
+  { id: 'lumen', name: 'LUMEN ミドルタワー', D: 42, H: 46.6, sideZ: 10.3, forms: ['ATX', 'mATX'], color: 0xe4e7eb, white: true, front: 'glass', rearFan: 12, desc: '白・前面もガラスの見せるケース' },
+  { id: 'nano', name: 'NANO ミニタワー', D: 34, H: 40, sideZ: 6.7, forms: ['mATX'], color: 0x1c1f24, front: 'mesh', rearFan: 9, desc: '机に置きやすい小型ケース' }
+];
+const MBS = [
+  { id: 'nx5pro', name: 'NX-5 PRO', socket: 'NX-5', ddr: 'DDR5', form: 'ATX', accent: '#4cc9f0' },
+  { id: 'nx5m', name: 'NX-5M', socket: 'NX-5', ddr: 'DDR5', form: 'mATX', accent: '#7bf1a8' },
+  { id: 'hl17', name: 'HL-17 GAMING', socket: 'HL-17', ddr: 'DDR4', form: 'ATX', accent: '#ff6b7a' }
+];
+const CPUS = [
+  { id: 'n5', brand: 'NOVACORE', model: 'N5-7600', socket: 'NX-5', cores: 6, tdp: 65 },
+  { id: 'n7', brand: 'NOVACORE', model: 'N7-7800', socket: 'NX-5', cores: 8, tdp: 105 },
+  { id: 'n9', brand: 'NOVACORE', model: 'N9-7950', socket: 'NX-5', cores: 16, tdp: 170 },
+  { id: 'h5', brand: 'HELIX', model: 'H5-1400', socket: 'HL-17', cores: 6, tdp: 65 },
+  { id: 'h7', brand: 'HELIX', model: 'H7-1700', socket: 'HL-17', cores: 12, tdp: 125 }
+];
+const M2S = [
+  { id: 's500', cap: '500GB', heatsink: false },
+  { id: 's1t', cap: '1TB', heatsink: true, color: 0x3a3f47 },
+  { id: 's2t', cap: '2TB', heatsink: true, color: 0x15171b, accent: '#ffc857' }
+];
+const RAMS = [
+  { id: 'd4', name: 'DDR4-3200 16GB×2', ddr: 'DDR4', gb: 32, color: 0x7a1f24, rgb: false, h: 3.4 },
+  { id: 'd5', name: 'DDR5-5600 16GB×2', ddr: 'DDR5', gb: 32, color: 0x2a2e35, rgb: true, h: 3.85 },
+  { id: 'd5w', name: 'DDR5-6000 32GB×2 (白)', ddr: 'DDR5', gb: 64, color: 0xe6e8ec, rgb: true, h: 4.4 }
+];
+const COOLERS = [
+  { id: 'compact', name: 'BREEZE 小型空冷', type: 'top', h: 7, cap: 95, w: 4 },
+  { id: 'tower', name: 'FROSTLINE 大型空冷', type: 'tower', h: 16.5, cap: 220, w: 5 },
+  { id: 'aio', name: 'HYDRA 簡易水冷 240mm', type: 'aio', h: 4.5, cap: 280, w: 10 }
+];
+const GPUS = [
+  { id: 'g56', name: 'ARCTURUS 5600', len: 24, fans: 2, slots: 2, w: 150 },
+  { id: 'g77', name: 'ARCTURUS 7700', len: 28, fans: 3, slots: 2, w: 220 },
+  { id: 'g99', name: 'ARCTURUS 9900', len: 33, fans: 3, slots: 3, w: 350 }
+];
+const PSUS = [
+  { id: 'p550', w: 550, grade: '80 PLUS BRONZE', col: '#c7773a' },
+  { id: 'p750', w: 750, grade: '80 PLUS GOLD', col: '#d4a93c' },
+  { id: 'p1000', w: 1000, grade: '80 PLUS PLATINUM', col: '#cfd6df' }
+];
+const B = { case: CASES[0] };
+const BASE_W = 70;
+function CL() {
+  const cs = B.case, frontX = -22.3 + cs.D, bottom = 23.3 - cs.H, frontIn = frontX - .25;
+  return { frontX, bottom, frontIn, sideZ: cs.sideZ, xc: -22.3 + cs.D / 2, yc: 23.3 - cs.H / 2,
+    shroudTop: bottom + 9.95, psuY: bottom + 4.65, fanZ: (-11 + cs.sideZ) / 2 };
+}
+const coolerMax = () => Math.floor((B.case.sideZ - .3 + 9.575) * 2) / 2;
+const gpuMax = () => Math.floor(CL().frontIn - 2.4 - (B.cooler && B.cooler.type === 'aio' ? 2.7 : 0) + 20);
+const totalW = () => BASE_W + (B.cpu ? B.cpu.tdp : 0) + (B.gpu ? B.gpu.w : 0) + (B.cooler ? B.cooler.w : 0);
+const recW = () => Math.ceil(totalW() * 1.5 / 50) * 50;
+
+/* ================= case ================= */
+const pc = new THREE.Group(); scene.add(pc);
+const MB_Z = -9.7;
+let caseG = null, slotCovers = [], frontFans = [], powerBtn, powerRing, glass;
+function buildCase(cs) {
+  B.case = cs;
+  const L = CL(), c = named(new THREE.Group(), 'PCケース (' + cs.name + ')');
+  const body = mat(cs.color, cs.white ? .38 : .42, cs.white ? .25 : .65);
+  const tray = mat(cs.white ? 0xdfe2e6 : 0x202329, .5, cs.white ? .2 : .6);
+  const innerM = mat(cs.white ? 0xd9dce1 : 0x1a1d22, .55, cs.white ? .2 : .5);
+  const z0 = -14.2, z1 = cs.sideZ, W = z1 - z0, zc = (z0 + z1) / 2, D = cs.D, H = cs.H;
+  rbox(D, H, .6, tray, L.xc, L.yc, -11.3, c, .1);
+  rbox(D, H, .5, body, L.xc, L.yc, -13.95, c, .1);
+  const top = box(D - .6, .5, W - .6, meshMat([D * 1.35, W * 1.35], cs.color), L.xc, 23.3, zc, c);
+  rbox(D, .7, W, body, L.xc, L.bottom, zc, c, .2);
+  const front = cs.front === 'glass'
+    ? box(.4, H - 1.2, W - 1.2, new THREE.MeshPhysicalMaterial({ color: 0x9aa6b8, roughness: .05, transparent: true, opacity: .18, clearcoat: 1, depthWrite: false }), L.frontX, L.yc, zc, c)
+    : box(.5, H - 1.2, W - 1.2, meshMat([W * 1.35, H * 1.35], cs.color), L.frontX, L.yc, zc, c);
+  rbox(.7, H, W, body, -22.3, L.yc, zc, c, .15);
+  [[L.xc, 23.3, z1, D, .7, .7], [L.xc, L.bottom, z1, D, .7, .7], [L.frontX, L.yc, z1, .7, H, .7], [-22.3, L.yc, z1, .7, H, .7],
+   [L.frontX, 23.3, zc, .7, .7, W], [L.frontX, L.bottom, zc, .7, .7, W]]
+    .forEach(([x, y, z, w, h, d]) => rbox(w, h, d, body, x, y, z, c, .25));
+  const rub = cs.white ? mat(0xc9cdd3, .8, 0) : M.rubber;
+  rbox(2, 9, .4, rub, 6.2, 9.5, -10.9, c, .3);
+  rbox(2, 4.5, .4, rub, 6.2, -4.2, -10.9, c, .3);
+  rbox(5, 1.2, .4, rub, -15.8, 21.8, -10.9, c, .3);
+  const sw = L.frontX + 4;
+  rbox(sw, 9.6, z1 + 11, innerM, -4 + sw / 2, L.bottom + 5.15, (z1 - 11) / 2, c, .3);
+  for (let i = 0; i < Math.min(9, Math.floor(sw / 1.6)); i++) rbox(.5, .06, 5, M.rubber, L.frontX - 2 - i, L.shroudTop + .02, z1 - 4, c, .02);
+  label(8, 1.4, [['PC BUILD LAB', .8, cs.white ? '#7a828e' : '#8f9aab']], { bg: null }, -4 + sw / 2, L.bottom + 5.15, z1 + .02, c);
+  rbox(.3, 7.2, 3.8, M.rubber, -21.9, 16, -7.6, c, .1);
+  slotCovers = [];
+  for (let i = 0; i < 6; i++) slotCovers.push(rbox(.15, 1.8, 11.5, M.alu, -21.85, -1.2 - i * 2.1, -3.1, c, .05));
+  const rf = makeFan(cs.rearFan); rf.rotation.y = Math.PI / 2;
+  rf.position.set(-20.9, 14, cs.rearFan === 12 ? 1.5 : -.5); c.add(rf);
+  frontFans = [14, 1].map(y => { const f = makeFan(12); f.rotation.y = -Math.PI / 2; f.position.set(L.frontIn - 1.25, y, L.fanZ); c.add(f); return f; });
+  [[L.xc - D / 2 + 4, z0 + 3], [L.xc + D / 2 - 4, z0 + 3], [L.xc - D / 2 + 4, z1 - 3], [L.xc + D / 2 - 4, z1 - 3]]
+    .forEach(([x, z]) => rbox(5, 1.1, 3, M.rubber, x, L.bottom - .9, z, c, .4));
+  powerBtn = cyl(.9, .5, M.chrome, L.frontX - 6.3, 23.85, z1 - 5.3, c, 'y', 32);
+  powerRing = ledMesh(new THREE.TorusGeometry(1.05, .1, 8, 40), new THREE.TorusGeometry(1.05, .4, 8, 40), c, L.frontX - 6.3, 23.7, z1 - 5.3);
+  powerRing.rotation.x = Math.PI / 2; powerRing.material.userData.fixed = true;
+  [[-19.3, -9.3], [-19.3, -3.4], [-19.3, 5], [-19.3, 19.8], [-8, -9.3], [-8, 19.8], [3.3, -9.3], [3.3, -3.4], [3.3, 5], [3.3, 19.8], [-8, 5]]
+    .filter(([, y]) => y > L.shroudTop + 1)
+    .forEach(([x, y]) => cyl(.35, 1.2, M.gold, x, y, -10.4, c, 'z', 12));
+  shadowify(c);
+  top.castShadow = false; front.castShadow = false;
+
+  glass = new THREE.Group();
+  const gm = new THREE.MeshPhysicalMaterial({ color: 0x8090a8, metalness: 0, roughness: .04, transparent: true,
+    opacity: .16, clearcoat: 1, envMapIntensity: 2, depthWrite: false });
+  const gw = D - .6, gh = H - .6;
+  box(gw, gh, .35, gm, 0, 0, 0, glass);
+  const tint = mat(0x050608, .3, .2, { transparent: true, opacity: .85 });
+  [[0, gh / 2 - .6, gw, 1.2], [0, -gh / 2 + .6, gw, 1.2], [gw / 2 - .6, 0, 1.2, gh], [-gw / 2 + .6, 0, 1.2, gh]]
+    .forEach(([x, y, w, h]) => box(w, h, .37, tint, x, y, 0, glass));
+  [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([a, b]) => cyl(.45, .5, M.chrome, a * (gw / 2 - 1.4), b * (gh / 2 - 1.4), .1, glass, 'z', 16));
+  glass.position.set(L.xc, L.yc, 45); glass.visible = false; glass.userData.closed = false;
+  glass.userData.zClosed = z1 + .25;
+  c.add(glass);
+  return c;
+}
+function setCase(cs) {
+  if (caseG) pc.remove(caseG);
+  caseG = buildCase(cs); pc.add(caseG);
+  $('#glassBtn').textContent = 'ガラスパネルを付ける';
+}
+
+/* ================= part builders ================= */
+const RAM_X = [-3, -1.8, -0.6, 0.6];
+function pcbTexture(mb) {
+  const key = 'pcb' + mb.id; if (texCache[key]) return texCache[key];
+  const Hb = mb.form === 'ATX' ? 30.5 : 24.4;
+  const S = 40, W = 24 * S, H = Hb * S, R = rng(mb.id.length * 13 + 7);
+  const [c, g] = mkCanvas(W, H);
+  const X = x => (x + 20) * S, Y = y => (20.5 - y) * S;
+  g.fillStyle = '#13171d'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 4000; i++) { g.fillStyle = `rgba(255,255,255,${R() * .025})`; g.fillRect(R() * W, R() * H, 2, 2); }
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let i = 0; i < 300; i++) {
+    g.strokeStyle = R() < .5 ? '#171d25' : '#1a222c'; g.lineWidth = 1.5 + R() * 2.5;
+    let x = R() * W, y = R() * H; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 3; k++) {
+      const Ln = 40 + R() * 220, a = Math.floor(R() * 8) * Math.PI / 4;
+      x += Math.cos(a) * Ln; y += Math.sin(a) * Ln; g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  g.strokeStyle = '#222c38'; g.lineWidth = 2;
+  for (let i = 0; i < 26; i++) { const yy = Y(6.5) + i * 9; g.beginPath(); g.moveTo(X(-5.5), yy); g.lineTo(X(-4.5), yy - 30); g.lineTo(X(-3.4), yy - 30); g.stroke(); }
+  for (let i = 0; i < 16; i++) { const xx = X(-11) + i * 9; g.beginPath(); g.moveTo(xx, Y(9.5)); g.lineTo(xx, Y(1)); g.stroke(); }
+  for (let i = 0; i < 450; i++) { g.fillStyle = '#2a3340'; g.beginPath(); g.arc(R() * W, R() * H, 2.2, 0, 7); g.fill(); }
+  g.strokeStyle = 'rgba(214,220,230,.32)'; g.lineWidth = 2;
+  const rect = (x1, y1, x2, y2) => g.strokeRect(X(x1), Y(y2), (x2 - x1) * S, (y2 - y1) * S);
+  rect(-10.8, 9.2, -5.2, 14.8); rect(-4.2, 5.4, 1.2, 19.8); rect(-17.3, -.7, -7.7, .7);
+  rect(-12.6, 3.1, -3.2, 5.9); rect(2.4, 7.2, 4, 12.8); rect(-18.5, 18.8, -15.5, 20.3);
+  g.fillStyle = 'rgba(214,220,230,.5)'; g.font = '600 15px "Segoe UI",Arial'; g.textAlign = 'left';
+  const t = (s, x, y) => g.fillText(s, X(x), Y(y));
+  t('CPU1 ' + mb.socket, -10.7, 8.7); t('M2_1', -12.5, 2.6); t('PCIE_X16', -17.2, 1.2); t('ATX_24P', 1.6, 6.6);
+  t('CPU_8P', -18.4, 18.3); t(mb.ddr, -3.9, 4.9);
+  ['A1', 'A2', 'B1', 'B2'].forEach((s, i) => t(s, -3.25 + i * 1.2, 20.1));
+  const by = 20.5 - Hb;
+  t('SYS_FAN1', 0, by + 1.1); t('USB3_F', 1.8, by + 7.5);
+  g.fillStyle = mb.accent; g.fillRect(X(-19), Y(by + 1.4), 6 * S, 4);
+  g.fillStyle = 'rgba(230,235,242,.85)'; g.font = '700 42px "Segoe UI",Arial'; t(mb.name, -19, by + 2.5);
+  [[-19.3, -9.3], [-19.3, -3.4], [-19.3, 5], [-19.3, 19.8], [-8, -9.3], [-8, 19.8], [3.3, -9.3], [3.3, -3.4], [3.3, 5], [3.3, 19.8], [-8, 5]]
+    .filter(([, y]) => mb.form === 'ATX' ? y !== -3.4 : y > -4)
+    .forEach(([x, y]) => {
+      g.fillStyle = '#b9973c'; g.beginPath(); g.arc(X(x), Y(y), 18, 0, 7); g.fill();
+      g.fillStyle = '#07080a'; g.beginPath(); g.arc(X(x), Y(y), 9, 0, 7); g.fill();
+    });
+  return (texCache[key] = toTex(c));
+}
+function buildMB(mb) {
+  const g = new THREE.Group(), atx = mb.form === 'ATX', Hb = atx ? 30.5 : 24.4, by = 20.5 - Hb;
+  const face = new THREE.MeshStandardMaterial({ map: pcbTexture(mb), roughness: .5, metalness: .25 });
+  const board = new THREE.Mesh(new THREE.BoxGeometry(24, Hb, .25), [M.pcbEdge, M.pcbEdge, M.pcbEdge, M.pcbEdge, face, M.pcbEdge]);
+  board.position.set(-8, 20.5 - Hb / 2, 0); g.add(board);
+  rbox(4.8, 4.8, .35, M.slot, -8, 12, .3, g, .08);
+  box(4.1, 4.1, .1, mat(0x8a7440, .35, .8), -8, 12, .5, g);
+  if (mb.socket === 'HL-17') {
+    [[0, 2.35, 4.9, .3], [0, -2.35, 4.9, .3], [2.35, 0, .3, 4.9], [-2.35, 0, .3, 4.9]].forEach(([x, y, w, h]) => box(w, h, .3, M.metal, -8 + x, 12 + y, .55, g));
+    cyl(.12, 5, M.metal, -10.7, 12, .45, g, 'y', 8);
+  } else {
+    rbox(4.9, .5, .25, M.metal, -8, 14.55, .45, g, .05); rbox(4.9, .5, .25, M.metal, -8, 9.45, .45, g, .05);
+    cyl(.12, 5, M.metal, -5.3, 12, .45, g, 'y', 8);
+  }
+  for (let i = 0; i < 7; i++) rbox(.8, .8, .6, M.choke, -11.6, 9 + i * 1, .45, g, .08);
+  for (let i = 0; i < 6; i++) rbox(.8, .8, .6, M.choke, -10.2 + i * 1.1, 15.7, .45, g, .08);
+  const hs = mb.socket === 'HL-17' ? mat(0x4a1e24, .35, .85) : M.aluDark;
+  rbox(1.8, 8.6, 1.9, hs, -13, 12.6, 1.1, g, .2);
+  rbox(7.4, 1.8, 1.9, hs, -8.6, 17.4, 1.1, g, .2);
+  for (let i = 0; i < 6; i++) { box(1.82, .1, .9, M.rubber, -13, 9 + i * 1.4, 1.65, g); box(.1, 1.82, .9, M.rubber, -11.6 + i * 1.2, 17.4, 1.65, g); }
+  rbox(2.6, 7.4, 3.4, hs, -18.8, 16, 1.8, g, .3);
+  label(3.4, .9, [[mb.socket, .8, mb.accent]], { bg: null, metal: .5 }, -18.8, 14, 3.52, g).rotation.z = Math.PI / 2;
+  RAM_X.forEach((x, i) => {
+    box(.55, 13.5, .6, i % 2 ? M.slotW : M.slot, x, 12.5, .42, g);
+    rbox(.65, .6, 1, M.slotW, x, 19.45, .55, g, .1);
+  });
+  rbox(1.1, 5.2, 1.4, M.slot, 3.2, 10, .8, g, .1);
+  rbox(2.4, 1.1, 1.2, M.slot, -17, 19.6, .7, g, .1);
+  rbox(9, .85, .75, M.metal, -12.5, 0, .4, g, .1);
+  rbox(.6, 2.4, .5, M.slot, -3.7, 4.5, .3, g, .08);
+  cyl(.25, .4, M.gold, -12.2, 4.5, .3, g, 'z', 10);
+  for (let i = 0; i < 5; i++) { cyl(.32, .9, M.cap, -18.5 + i * .9, 1.6, .55, g, 'z', 14); cyl(.33, .02, M.nickel, -18.5 + i * .9, 1.6, 1.01, g, 'z', 14); }
+  if (atx) {
+    rbox(2.5, .8, .7, M.slot, -16.5, -6, .4, g, .08);
+    rbox(5.2, 5.2, .8, hs, -2, -4.2, .5, g, .3);
+    label(3.6, 1, [[mb.socket, .8, '#c9d1dc']], { bg: null, metal: .5 }, -2, -4.2, .92, g);
+    cyl(1, .3, M.nickel, -12, -6.5, .25, g, 'z', 32);
+    for (let i = 0; i < 2; i++) rbox(1, 1.8, 1, M.slot, 3.3, -3.5 - i * 2.2, .6, g, .1);
+    box(1.6, 1.6, .2, M.dark, -15, -4.5, .2, g);
+  } else {
+    rbox(3.4, 3.4, .7, hs, .2, -1.6, .45, g, .25);
+    cyl(1, .3, M.nickel, -15.5, -2.2, .25, g, 'z', 32);
+    rbox(1, 1.8, 1, M.slot, 3.3, -1.5, .6, g, .1);
+  }
+  rbox(2.4, .6, .5, M.slot, -8, by + .7, .35, g, .05); rbox(1.6, .6, .5, M.slot, -3, by + .7, .35, g, .05);
+  return named(g, 'マザーボード (' + mb.name + ')');
+}
+function buildCPU(cpu) {
+  const g = new THREE.Group(), hl = cpu.socket === 'HL-17';
+  const w = hl ? 3.7 : 4, h = hl ? 4.4 : 4;
+  box(w, h, .12, M.green, -8, 12, .55, g);
+  rbox(w - .6, h - .6, .25, mat(hl ? 0xd0c8b8 : 0xc2c7cf, .28, .95), -8, 12, .73, g, .2);
+  for (let i = 0; i < 7; i++) box(.18, .1, .04, M.gold, -8 - w / 2 + .4 + i * .45, 12 - h / 2 + .15, .6, g);
+  label(w - .9, 1.5, [[cpu.brand, .34, '#4a515c'], [cpu.model, .32, '#4a515c'], [cpu.socket, .2, '#6a717c']], { bg: null, metal: .9 }, -8, 12, .865, g);
+  box(.5, .5, .05, M.gold, -8 - w / 2 + .4, 12 - h / 2 + .4, .63, g);
+  return named(g, 'CPU (' + cpu.brand + ' ' + cpu.model + ')');
+}
+function buildCooler(co) {
+  const g = new THREE.Group();
+  if (co.type === 'top') {
+    rbox(4.2, 4.2, .7, M.nickel, -8, 12, 1.15, g, .15);
+    for (let i = 0; i < 18; i++) box(6, .08, 3, M.alu, -8, 9.1 + i * .34, 2.95, g);
+    rbox(6.4, 6.4, .4, M.dark, -8, 12, 4.6, g, .2);
+    const f = makeFan(9.2); f.position.set(-8, 12, 5.75); g.add(f);
+  } else if (co.type === 'tower') {
+    rbox(4.2, 4.2, .8, M.nickel, -8, 12, 1.2, g, .15);
+    rbox(7.6, 1, .4, M.metal, -8, 12, 1.75, g, .1);
+    [[-9.9, -6.1, 11], [-9.45, -6.55, 12], [-9, -7, 13]].forEach(([x1, x2, y]) => {
+      const pts = [[x1, y, 16.6], [x1, y, 3], [x1 + .4, y, 1.55], [-8, y, 1.3], [x2 - .4, y, 1.55], [x2, y, 3], [x2, y, 16.6]];
+      const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 80, .3, 12);
+      g.add(new THREE.Mesh(tube, M.copper));
+      [x1, x2].forEach(x => cyl(.31, .15, M.chrome, x, y, 16.7, g, 'z', 14));
+    });
+    for (let i = 0; i < 33; i++) box(5, 12, .1, M.alu, -8, 12, 3 + i * .4, g);
+    rbox(5.4, 12.4, .55, M.dark, -8, 12, 16.2, g, .2);
+    label(4.4, 1.3, [['FROSTLINE', .7, '#9bdcf0']], { bg: null }, -8, 16, 16.49, g);
+    const f = makeFan(12); f.rotation.y = Math.PI / 2; f.position.set(-4.85, 12, 9.6); g.add(f);
+  } else {
+    const L = CL(), z = MB_Z, radX = L.frontIn - 2.4 - 1.35, fz = L.fanZ;
+    rbox(4.6, 4.6, .8, M.nickel, -8, 12, z + 1.2, g, .2);
+    cyl(2.6, 2.6, mat(0x15171b, .35, .6), -8, 12, z + 2.9, g, 'z', 48);
+    ledMesh(new THREE.TorusGeometry(2.25, .12, 8, 64), new THREE.TorusGeometry(2.25, .5, 8, 64), g, -8, 12, z + 4.22);
+    const cap = label(3.6, 3.6, [['HYDRA', .3, '#e8ecf2']], { bg: '#121418' }, -8, 12, z + 4.21, g);
+    cap.geometry = new THREE.CircleGeometry(1.95, 48);
+    rbox(2.7, 27.5, 12.4, M.aluDark, radX, 7.5, fz, g, .2);
+    for (let i = 0; i < 40; i++) box(2.72, .05, 11.6, M.rubber, radX, -5 + i * .64, fz, g);
+    rbox(3, 1.6, 12.8, M.dark, radX, 21.1, fz, g, .3); rbox(3, 1.6, 12.8, M.dark, radX, -6.1, fz, g, .3);
+    [14, 1].forEach(y => { const f = makeFan(12); f.rotation.y = -Math.PI / 2; f.position.set(L.frontIn - 1.25, y, fz); g.add(f); });
+    const sleeve = mat(0xffffff, .65, .1, { map: sleeveTex(40) });
+    [[13.4, 1.4], [10.6, -1.4]].forEach(([y, dz]) => {
+      const pts = [[-5.4, y, z + 3], [-3.4, y + 1.5, z + 6.6], [2, 17 + dz * .5, z + 8], [radX - 3.5, 19.5 + dz * .3, fz + dz], [radX - 1.4, 20.3, fz + dz]];
+      const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 80, .45, 12);
+      g.add(new THREE.Mesh(tube, sleeve));
+    });
+  }
+  return named(g, 'CPUクーラー (' + co.name + ')');
+}
+function buildRAM(r) {
+  const g = new THREE.Group(), sp = mat(r.color, .3, .85), white = r.color > 0xa00000;
+  [RAM_X[1], RAM_X[3]].forEach(x => {
+    box(.22, 13.3, 3.2, M.green, x, 12.5, 2.15, g);
+    box(.24, 13, .35, M.gold, x, 12.5, .72, g);
+    const sh = r.h - 1.25;
+    rbox(.62, 13.2, sh, sp, x, 12.5, 1 + sh / 2, g, .12);
+    const l = label(7, 1.1, [[r.ddr === 'DDR4' ? 'DDR4' : 'NOVA ' + r.ddr, .7, white ? '#5d6470' : r.ddr === 'DDR4' ? '#f3c6c6' : '#9fb3c8']], { bg: null, metal: .5 }, x + .32, 12.5, 1 + sh / 2, g);
+    l.geometry.rotateZ(Math.PI / 2); l.geometry.rotateY(Math.PI / 2);
+    if (r.rgb) ledBox(.5, 12.9, .45, g, x, 12.5, r.h, 0xdfe3e8);
+    else rbox(.62, 13.2, .4, sp, x, 12.5, r.h - .05, g, .1);
+  });
+  return named(g, 'メモリ (' + r.name + ')');
+}
+function buildM2(m) {
+  const g = new THREE.Group();
+  box(8, 2.2, .15, M.green, -8, 4.5, .25, g);
+  [-10.5, -8.3, -6.1].forEach(x => box(1.6, 1.4, .15, M.dark, x, 4.5, .38, g));
+  if (m.heatsink) {
+    rbox(7, 2, .45, mat(m.color, .35, .85), -8.4, 4.5, .62, g, .12);
+    for (let i = 0; i < 6; i++) box(.08, 2.02, .1, M.rubber, -11.4 + i * 1.2, 4.5, .85, g);
+    label(4.4, 1, [['NVMe ' + m.cap, .7, m.accent || '#c8d0da']], { bg: null, metal: .5 }, -7.6, 4.5, .86, g);
+  } else {
+    label(3.8, 1.2, [['NVMe ' + m.cap, .5, '#1b1e24']], { bg: '#d7dbe0' }, -9.2, 4.5, .47, g);
+  }
+  return named(g, 'M.2 NVMe SSD (' + m.cap + ')');
+}
+function buildGPU(gp) {
+  const g = new THREE.Group(), x0 = -20, x1 = -20 + gp.len, cx = (x0 + x1) / 2, t = gp.slots === 3 ? 5.2 : 3.8, bot = .5 - t;
+  box(gp.len - 1, .16, 11.5, M.green, cx - .5, .55, 6.6, g);
+  rbox(gp.len - .6, .3, 11.8, M.backplate, cx - .3, .8, 6.6, g, .1);
+  for (let i = 0; i < 7; i++) rbox(.25, .05, 6, M.rubber, x1 - 9 + i * .8, .96, 6.6, g, .02);
+  label(8, 2, [['ARCTURUS', .6, '#5e6672']], { bg: null, metal: .6 }, x0 + 8, .96, 6.6, g).rotation.x = -Math.PI / 2;
+  rbox(gp.len, 1.5, 11.8, M.shroud, cx, -.25, 6.6, g, .35);
+  for (let x = x0 + .8; x <= x1 - 1; x += .4) box(.08, t - 2, 11.2, M.alu, x, (-1 + bot + .4) / 2, 6.6, g);
+  rbox(gp.len, .4, 11.8, M.shroud, cx, bot + .2, 6.6, g, .18);
+  rbox(.8, t - .2, 11.8, M.shroud, x1 - .4, (bot + .5) / 2, 6.6, g, .3);
+  const span = gp.len - 3, s = Math.min(8.6, span / gp.fans - .3);
+  for (let i = 0; i < gp.fans; i++) {
+    const f = makeFan(s, { frame: false, led: false, blades: 11 }); f.rotation.x = Math.PI / 2;
+    f.position.set(x0 + 1.5 + (i + .5) * span / gp.fans, bot - .3, 6.6); g.add(f);
+  }
+  label(6, 1.1, [['ARCTURUS', .75, '#e8ecf2']], { bg: null }, x0 + 4.5, -.25, 12.52, g);
+  label(3, .8, [[gp.name.split(' ')[1], .8, '#8f9aab']], { bg: null }, x0 + 9, -.25, 12.52, g);
+  ledBox(gp.len - 13, .35, .12, g, (x0 + 11 + x1 - 2) / 2, -.25, 12.52, 0xd0d5dc);
+  rbox(2.4, .9, 1.3, M.rubber, x1 - 3, 1.15, 10, g, .1);
+  box(.2, t + .6, 12, M.metal, -20.3, (bot + .9) / 2, 6.6, g);
+  [2.5, 5.5, 8.5].forEach(z => box(.2, 1, 1.6, M.rubber, -20.45, -.3, z, g));
+  return named(g, 'グラフィックボード (' + gp.name + ')');
+}
+function buildPSU(p) {
+  const g = new THREE.Group(), y = CL().psuY;
+  rbox(15, 8.6, 15, M.psu, -13.5, y, -2.8, g, .4);
+  label(10, 5, [[p.w + 'W', .42, '#f2f4f7'], [p.grade, .2, p.col]], { bg: '#121417', accent: p.col }, -13.5, y, 4.72, g);
+  box(.05, 7, 13, meshMat([12, 6], 0x0d0f12), -5.98, y, -2.8, g);
+  return named(g, '電源ユニット (' + p.w + 'W)');
+}
+function buildCable(pts, r, ghost) {
+  const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)), false, 'centripetal');
+  const geo = new THREE.TubeGeometry(curve, 240, r, 12, false);
+  const cm = ghost ? ghostMat : mat(0xffffff, .65, .1, { map: sleeveTex(curve.getLength() / (r * 6)) });
+  const m = new THREE.Mesh(geo, cm);
+  const g = new THREE.Group(); g.add(m); g.userData.tube = m;
+  const p = rbox(r * 3.4, r * 2.4, r * 3.2, ghost ? ghostMat : M.rubber, 0, 0, 0, g, r * .3);
+  p.position.copy(curve.getPoint(1)); p.lookAt(p.position.clone().add(curve.getTangent(1)));
+  g.userData.end = p;
+  if (!ghost) shadowify(g);
+  return g;
+}
+
+/* ================= steps ================= */
+let mbW = null;
+const cmPart = v => `${v}cm`;
+const steps = [
+  { id: 'case', title: 'ケースを選ぶ', confirm: 'このケースで組み立てる', focus: () => [CL().xc, CL().yc, 0, 92],
+    desc: 'すべての部品を収める箱です。大きさによって、入るマザーボードの種類や、グラボの長さ、クーラーの高さの上限が決まります。',
+    tip: '選ぶと3D画面のケースが切り替わります。小型ケースは置き場所に困りませんが、入るパーツが限られます。',
+    options: CASES.map(cs => ({ name: cs.name, spec: `${cs.desc} ／ ${cs.forms.join('・')}対応`, part: cs })) },
+  { id: 'mb', title: 'マザーボードを取り付ける', parent: () => pc, base: [0, 0, MB_Z], offset: [0, 0, 32], focus: () => [CL().xc, 4, 0, 88],
+    desc: 'すべてのパーツをつなぐ土台の基板です。「ソケット」でCPUが、「メモリ規格」でメモリが、「サイズ」で入るケースが決まります。',
+    tip: 'ATXは大きく拡張性が高い標準サイズ、microATX（mATX）は少し小さいサイズです。ケースの対応サイズを確認しましょう。',
+    options: MBS.map(mb => ({ name: mb.name, spec: `ソケット ${mb.socket} ／ ${mb.ddr} ／ ${mb.form}`, part: mb, build: () => buildMB(mb) })),
+    check: o => B.case.forms.includes(o.form) ? null : `大きさが合いません。このケースは${B.case.forms.join('・')}対応で、${o.form}のマザーボードは入りません。` },
+  { id: 'cpu', title: 'CPUを取り付ける', parent: () => mbW, offset: [0, 0, 14], focus: () => [-8, 12, -9, 30],
+    desc: 'パソコンの頭脳です。コア数が多いほど同時にたくさんの処理ができますが、発熱（TDP）も大きくなります。',
+    tip: 'マザーボードとCPUの「ソケット」が同じものを選びます。▲マークを合わせて静かに置き、レバーを下ろします。',
+    options: CPUS.map(c => ({ name: c.brand[0] + c.brand.slice(1).toLowerCase() + ' ' + c.model, spec: `ソケット ${c.socket} ／ ${c.cores}コア ／ 発熱 ${c.tdp}W`, part: c, build: () => buildCPU(c) })),
+    check: o => o.socket === B.mb.socket ? null : `ソケットの形が合いません。マザーボードは「${B.mb.socket}」用、このCPUは「${o.socket}」用です。` },
+  { id: 'm2', title: 'M.2 SSDを取り付ける', parent: () => mbW, offset: [0, 0, 10], focus: () => [-8, 4.5, -9, 28],
+    desc: 'OSやデータを保存するストレージです。M.2 NVMeはマザーボードに直接挿す、薄くて高速なSSDです。',
+    tip: '容量が大きいほど、ゲームや動画をたくさん保存できます。約30度の角度で差し込み、寝かせてからネジで固定します。',
+    options: M2S.map(m => ({ name: 'M.2 NVMe SSD ' + m.cap, spec: m.heatsink ? 'ヒートシンク付き' : 'ヒートシンクなし', part: m, build: () => buildM2(m) })) },
+  { id: 'ram', title: 'メモリを取り付ける', parent: () => mbW, offset: [0, 0, 12], focus: () => [-1, 12.5, -8, 34],
+    desc: '作業中のデータを一時的に置く場所です。DDR4とDDR5は切り欠きの位置が違い、互換性がありません。',
+    tip: '2枚のときは、CPU側から数えて2番目と4番目のスロットに挿すと「デュアルチャネル」で速く動きます。',
+    options: RAMS.map(r => ({ name: r.name, spec: `${r.ddr} ／ 合計${r.gb}GB${r.rgb ? ' ／ RGBライト' : ''}`, part: r, build: () => buildRAM(r) })),
+    check: o => o.ddr === B.mb.ddr ? null : `${o.ddr}は${B.mb.ddr}のスロットに挿さりません。切り欠きの位置が違うので、物理的に入らない作りです。` },
+  { id: 'cooler', title: 'CPUクーラーを取り付ける', parent: () => mbW, offset: [0, 0, 20], focus: () => [-4, 10, -4, 52],
+    desc: 'CPUの熱を逃がす部品です。冷却性能がCPUの発熱を下回ると、熱で性能が落ちたり止まったりします。',
+    tip: '空冷はケースの幅に収まる高さか、簡易水冷はケース前面にラジエーターを付けられるかを確認します。CPUには熱伝導グリスを塗ってから載せます。',
+    options: COOLERS.map(co => ({ name: co.name, spec: (co.type === 'aio' ? '前面にラジエーター設置' : `高さ ${co.h}cm`) + ` ／ 冷却 ${co.cap}Wまで`, part: co,
+      parent: co.type === 'aio' ? () => pc : null, offset: co.type === 'aio' ? [0, 0, 26] : null, build: () => buildCooler(co) })),
+    check: o => {
+      if (o.type !== 'aio' && o.h > coolerMax()) return `背が高すぎます。高さ${o.h}cmで、このケースは${coolerMax()}cmまで。サイドパネルが閉まりません。`;
+      if (o.cap < B.cpu.tdp) return `冷却性能が足りません。CPUの発熱 ${B.cpu.tdp}W に対して、このクーラーは ${o.cap}W までです。`;
+      return null;
+    },
+    onInstall: o => { if (o.type === 'aio') frontFans.forEach(f => f.visible = false); } },
+  { id: 'gpu', title: 'グラフィックボードを取り付ける', parent: () => mbW, offset: [0, 0, 18], focus: () => [-4, -2, -3, 54],
+    desc: '映像を描く専用プロセッサです。性能が高いほどゲームが滑らかに動きますが、長く、電気も多く使います。',
+    tip: 'ケースに入る長さを確認しましょう。前面にラジエーターを付けた場合は、その分だけ短くなります。',
+    options: GPUS.map(gp => ({ name: gp.name, spec: `長さ ${gp.len}cm ／ ${gp.slots}スロット厚 ／ 消費 ${gp.w}W`, part: gp, build: () => buildGPU(gp) })),
+    check: o => o.len <= gpuMax() ? null : `長すぎて入りません。長さ${o.len}cmで、このケースは${gpuMax()}cmまで${B.cooler.type === 'aio' ? '（前面ラジエーターの分を引いた長さ）' : ''}です。`,
+    onInstall: o => slotCovers.slice(0, o.slots).forEach(s => s.visible = false) },
+  { id: 'psu', title: '電源ユニットを取り付ける', parent: () => pc, offset: [0, 0, 24], focus: () => [-10, CL().psuY + 4, 2, 66],
+    desc: 'コンセントの電気を、各パーツが使える電圧に変換します。容量が足りないと、負荷が高いときに突然落ちることがあります。',
+    tip: '合計消費電力の約1.5倍の容量が目安です。左の「今の構成」で推奨容量を確認しましょう。',
+    options: PSUS.map(p => ({ name: p.w + 'W ' + p.grade.replace('80 PLUS', '80PLUS'), spec: `定格出力 ${p.w}W`, part: p, build: () => buildPSU(p) })),
+    check: o => o.w >= recW() ? null : `容量が足りません。消費電力の目安は約${totalW()}Wなので、${recW()}W以上がおすすめです。` },
+  { id: 'wire', type: 'wire', title: '電源ケーブルをつなぐ', focus: () => [-2, 5, -2, 74],
+    desc: '電源ユニットから出ている3本のケーブルを、それぞれ正しい差し込み口につなぎます。ケーブルはケースの裏側を通して、ゴムの穴（グロメット）から出してあります。',
+    tip: '左のリストでケーブルを選び、3D画面で光っているプラグをつかんで、差し込み口までドラッグします。形の合う口に近づくと緑に光ります。どの順番でつないでもOK。' },
+  { id: 'power', type: 'power', title: '電源を入れる', focus: () => [CL().xc, 4, 0, 88],
+    desc: 'すべての部品とケーブルがつながりました。ケース上部の電源ボタンを押して起動しましょう。',
+    tip: '最初の起動では、BIOS画面ですべての部品が正しく認識されているかを確認します。' }
+];
+
+/* ================= state ================= */
+let idx = 0, sel = null, busy = false, finished = false;
+let staging = null, ghost = null;
+const installed = [];
+const ghostMat = new THREE.MeshBasicMaterial({ color: 0x4cc9f0, transparent: true, opacity: .3, depthWrite: false });
+
+/* ================= tween ================= */
+const tweens = [];
+const easeIO = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+function tween(dur, fn, ease = easeIO) {
+  return new Promise(res => tweens.push({ s: performance.now(), dur, fn, ease, res }));
+}
+function runTweens(now) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i], k = Math.min(1, (now - tw.s) / tw.dur);
+    tw.fn(tw.ease(k));
+    if (k >= 1) { tweens.splice(i, 1); tw.res(); }
+  }
+}
+const DIR = new THREE.Vector3(.5, .32, 1).normalize();
+function focus([x, y, z, d]) {
+  const tgt = new THREE.Vector3(x, y, z), pos = tgt.clone().addScaledVector(DIR, d);
+  const p0 = camera.position.clone(), q0 = controls.target.clone();
+  tween(1100, k => { camera.position.lerpVectors(p0, pos, k); controls.target.lerpVectors(q0, tgt, k); });
+}
+
+/* ================= sound ================= */
+let ac;
+function tone(f, d, type = 'sine', v = .12, slide) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d);
+  } catch (e) {}
+}
+const sfx = {
+  click: () => { tone(2200, .04, 'square', .05); setTimeout(() => tone(1100, .05, 'square', .04), 35); },
+  err: () => tone(200, .35, 'sawtooth', .08, 90),
+  pick: () => tone(660, .08, 'sine', .08),
+  boot: () => tone(55, 1.4, 'sine', .25, 140),
+  beep: () => tone(1000, .18, 'square', .06)
+};
+
+/* ================= UI ================= */
+let toastTimer;
+function toast(msg, type = '') {
+  const t = $('#toast'); t.textContent = msg; t.className = 'show ' + type;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = type, type === 'error' ? 4600 : 2400);
+}
+const dots = $('#dots');
+steps.forEach(s => { const d = document.createElement('div'); d.className = 'dot'; d.title = s.title; dots.appendChild(d); });
+function fmt(ms) { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
+function renderBuild() {
+  const rows = [];
+  const row = (k, v, sub) => rows.push(`<div class="row"><span class="k">${k}</span><span class="v">${v}${sub ? `<small>${sub}</small>` : ''}</span></div>`);
+  const cs = B.case;
+  if (idx >= 1) row('ケース', cs.name, `${cs.forms.join('・')}対応 ／ グラボ${gpuMax()}cmまで ／ クーラー高さ${coolerMax()}cmまで`);
+  if (B.mb) row('マザボ', B.mb.name, `ソケット ${B.mb.socket} ／ ${B.mb.ddr} ／ ${B.mb.form}`);
+  if (B.cpu) row('CPU', B.cpu.model, `発熱 ${B.cpu.tdp}W`);
+  if (B.m2) row('SSD', B.m2.cap);
+  if (B.ram) row('メモリ', B.ram.name);
+  if (B.cooler) row('クーラー', B.cooler.name, `冷却 ${B.cooler.cap}Wまで`);
+  if (B.gpu) row('グラボ', B.gpu.name, `消費 ${B.gpu.w}W`);
+  if (B.psu) row('電源', B.psu.w + 'W');
+  if (idx >= 2) row('消費電力', '約' + totalW() + 'W', `推奨電源 ${recW()}W以上`);
+  const el = $('#spec');
+  el.style.display = rows.length ? 'block' : 'none';
+  el.innerHTML = '<div class="h">今の構成（パーツ選びの参考に）</div>' + rows.join('');
+  $('#watt').textContent = totalW() + 'W';
+}
+function renderStep() {
+  const st = steps[idx];
+  $('#stepNo').textContent = `STEP ${idx + 1} / ${steps.length}`;
+  $('#stepTitle').textContent = st.title;
+  $('#stepDesc').textContent = st.desc;
+  $('#stepTip').textContent = st.tip;
+  [...dots.children].forEach((d, i) => d.className = 'dot' + (i < idx ? ' done' : i === idx ? ' cur' : ''));
+  renderBuild();
+  const list = $('#opts'); list.innerHTML = '';
+  if (st.options) {
+    const lab = document.createElement('div'); lab.className = 'optLabel';
+    lab.textContent = `パーツを選ぶ（${st.options.length}種類から1つ）`; list.appendChild(lab);
+    st.options.forEach((o, i) => {
+      const b = document.createElement('button');
+      b.className = 'opt' + (o.bad ? ' bad' : '') + (sel === i ? ' sel' : '');
+      b.innerHTML = `<div class="n"></div><div class="s"></div>`;
+      b.querySelector('.n').textContent = o.name; b.querySelector('.s').textContent = o.spec;
+      b.onclick = () => choose(i);
+      list.appendChild(b);
+    });
+  }
+  if (st.type === 'wire') renderWires(list);
+  const btn = $('#install');
+  btn.style.display = st.type === 'wire' ? 'none' : '';
+  btn.className = st.type === 'power' ? 'power' : '';
+  btn.textContent = st.confirm || (st.type === 'power' ? '電源を入れる' : st.type === 'cable' ? 'ケーブルをつなぐ' : '取り付ける');
+  btn.disabled = !!(st.options && sel === null);
+  $('#hint').textContent = st.id === 'case' ? '3D画面をドラッグして、ケースの中を確認できます'
+    : st.type === 'power' ? 'ケース上部の光っているボタンをクリックしても起動できます'
+    : st.type === 'wire' ? 'ドラッグ中は視点が動きません。プラグ以外の場所をドラッグすると視点を回せます'
+    : '3D画面で浮いている部品をクリックしても取り付けられます';
+}
+
+function clearStage() {
+  if (staging) { staging.parent.remove(staging); staging = null; }
+  if (ghost) { ghost.parent.remove(ghost); ghost = null; }
+}
+function makeGhost(obj) {
+  obj.traverse(o => { if (o.isMesh) { o.material = ghostMat; o.castShadow = o.receiveShadow = false; } });
+  return obj;
+}
+const parentOf = (st, o) => (o && o.parent ? o.parent : st.parent)();
+function setupStep() {
+  clearStage();
+  const st = steps[idx];
+  sel = null;
+  if (st.id === 'case') sel = CASES.indexOf(B.case);
+  if (st.type === 'wire') {
+    setupWires();
+  } else if (st.type === 'power') {
+    ghost = new THREE.Mesh(new THREE.TorusGeometry(1.9, .25, 8, 40), ghostMat);
+    ghost.rotation.x = Math.PI / 2; ghost.position.copy(powerBtn.position); ghost.position.y += .35; caseG.add(ghost);
+  }
+  renderStep();
+  focus(st.focus());
+}
+function spawn(opt) {
+  const st = steps[idx];
+  clearStage();
+  const parent = parentOf(st, opt), base = st.base || [0, 0, 0];
+  ghost = makeGhost(opt.build()); ghost.position.set(...base); parent.add(ghost);
+  const w = new THREE.Group(); w.add(shadowify(opt.build()));
+  w.userData.base = new THREE.Vector3(...base);
+  w.userData.off = new THREE.Vector3(...(opt.offset || st.offset));
+  w.position.copy(w.userData.base).add(w.userData.off);
+  parent.add(w); staging = w;
+}
+function choose(i) {
+  const st = steps[idx];
+  if (busy || finished || !st.options) return;
+  sel = i; sfx.pick();
+  if (st.id === 'case') { setCase(st.options[i].part); focus(st.focus()); }
+  else spawn(st.options[i]);
+  renderStep();
+}
+
+/* ================= install ================= */
+async function attempt() {
+  if (busy || finished) return;
+  const st = steps[idx];
+  if (st.type === 'power') return powerOn();
+  if (st.type === 'wire') { toast('3D画面でプラグをドラッグして、差し込み口につなごう', 'warn'); return; }
+  if (st.id === 'case') { sfx.click(); toast('「' + B.case.name + '」に決めました', 'ok'); return next(); }
+  if (st.type === 'cable') {
+    busy = true;
+    const g = buildCable(st.pts(), st.r, false); named(g, st.name);
+    const tube = g.userData.tube, total = tube.geometry.index.count, seg = 12 * 6;
+    tube.geometry.setDrawRange(0, 0); g.userData.end.visible = false;
+    ghost.parent.remove(ghost); ghost = null;
+    pc.add(g);
+    await tween(1400, k => tube.geometry.setDrawRange(0, Math.floor(total * k / seg) * seg), k => k);
+    g.userData.end.visible = true; installed.push(g); sfx.click();
+    toast('「' + st.name + '」をつなぎました', 'ok');
+    busy = false; return next();
+  }
+  if (sel === null) { toast('先にパーツを選んでください', 'warn'); return; }
+  const opt = st.options[sel], w = staging, base = w.userData.base, off = w.userData.off;
+  busy = true;
+  const from = w.position.clone();
+  const reason = st.check ? st.check(opt.part) : null;
+  if (reason) {
+    opt.bad = true;
+    const near = base.clone().addScaledVector(off, .3);
+    await tween(450, k => w.position.lerpVectors(from, near, k));
+    sfx.err(); toast(reason, 'error');
+    await tween(420, k => { w.position.copy(near); w.position.x += Math.sin(k * Math.PI * 8) * .5 * (1 - k); }, k => k);
+    const back = base.clone().add(off);
+    await tween(450, k => w.position.lerpVectors(near, back, k));
+    sel = null; clearStage(); busy = false; renderStep();
+    return;
+  }
+  await tween(1000, k => w.position.lerpVectors(from, base, k));
+  sfx.click();
+  w.traverse(o => { if (o.userData.name && !w.userData.name) w.userData.name = o.userData.name; });
+  installed.push(w); staging = null;
+  if (ghost) { ghost.parent.remove(ghost); ghost = null; }
+  B[st.id] = opt.part;
+  if (st.id === 'mb') mbW = w;
+  if (st.onInstall) st.onInstall(opt.part);
+  toast('「' + opt.name + '」を取り付けました', 'ok');
+  busy = false; next();
+}
+function next() { idx++; if (idx < steps.length) setupStep(); }
+
+/* ================= glass panel ================= */
+let glassBusy = false;
+async function setGlass(close) {
+  if (glassBusy || glass.userData.closed === close) return;
+  glassBusy = true; glass.visible = true;
+  const m = glass.children[0].material, z0 = glass.position.z, z1 = close ? glass.userData.zClosed : 45;
+  const o0 = close ? 0 : .16, o1 = close ? .16 : 0, tint = glass.children[1].material;
+  await tween(800, k => { glass.position.z = z0 + (z1 - z0) * k; m.opacity = o0 + (o1 - o0) * k; tint.opacity = (close ? k : 1 - k) * .85; });
+  glass.visible = close; glass.userData.closed = close; glassBusy = false;
+  $('#glassBtn').textContent = close ? 'ガラスパネルを外す' : 'ガラスパネルを付ける';
+}
+$('#glassBtn').onclick = () => setGlass(!glass.userData.closed);
+
+/* ================= power on ================= */
+let rotors = [], leds = [], fanTarget = 0, fanSpeed = 0, ledLevel = 0;
+async function powerOn() {
+  if (busy) return; busy = true;
+  if (ghost) { ghost.parent.remove(ghost); ghost = null; }
+  finished = true;
+  dots.lastChild.className = 'dot done';
+  rotors = []; leds = [];
+  pc.traverse(o => {
+    if (!o.visible) return;
+    if (o.userData.rotor) rotors.push(o);
+    if (o.isMesh && o.material.userData && o.material.userData.led && !o.material.userData.fixed)
+      leds.push({ m: o.material, h: o.userData.halo, i: leds.length });
+  });
+  sfx.boot(); fanTarget = 1;
+  $('#install').disabled = true; $('#install').textContent = '起動中…';
+  setGlass(true);
+  await tween(2600, () => {});
+  const boot = $('#boot'); boot.style.display = 'block'; boot.textContent = '';
+  const pad = (s, n) => (s + ' ').padEnd(n, '.');
+  const lines = [
+    B.mb.name + ' BIOS  v1.04', '',
+    pad(`CPU    : ${B.cpu.brand} ${B.cpu.model}  ${B.cpu.cores} Cores`, 50) + ' OK',
+    pad(`Memory : ${B.ram.gb}GB ${B.ram.ddr}  Dual Channel`, 50) + ' OK',
+    pad(`Storage: NVMe SSD ${B.m2.cap}`, 50) + ' OK',
+    pad(`Video  : ${B.gpu.name}`, 50) + ' OK',
+    pad(`Cooler : ${B.cooler.type === 'aio' ? 'AIO Pump 2400rpm' : 'CPU Fan 1200rpm'}`, 50) + ' OK',
+    pad(`Power  : ${B.psu.w}W  (Load ${totalW()}W)`, 50) + ' OK', '',
+    'All devices detected.  Booting...'
+  ];
+  sfx.beep();
+  for (const l of lines) { boot.textContent += l + '\n'; await tween(260, () => {}); }
+  await tween(900, () => {});
+  boot.style.display = 'none';
+  $('#fSpec').innerHTML = [['ケース', B.case.name], ['マザボ', B.mb.name], ['CPU', B.cpu.brand + ' ' + B.cpu.model], ['SSD', B.m2.cap],
+    ['メモリ', B.ram.name], ['クーラー', B.cooler.name], ['グラボ', B.gpu.name], ['電源', B.psu.w + 'W ' + B.psu.grade]]
+    .map(([k, v]) => `<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  $('#finish').style.display = 'flex';
+  $('#install').textContent = '起動しました';
+  $('#stepTitle').textContent = '起動成功！';
+  $('#stepDesc').textContent = 'ファンが回り、LEDが光っています。画面をドラッグして、完成したPCを自由に眺めてみましょう。';
+  focus([CL().xc, 2, 0, 86]);
+}
+$('#install').onclick = attempt;
+$('#again').onclick = () => location.reload();
+$('#look').onclick = () => { $('#finish').style.display = 'none'; controls.autoRotate = true; controls.autoRotateSpeed = .8; };
+
+/* ================= picking / hover ================= */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pick(e, objs) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return ray.intersectObjects(objs.filter(Boolean), true)[0];
+}
+/* ================= wiring (player drags plugs) ================= */
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const CABLES = [
+  { id: 'atx24', name: '24ピン電源ケーブル', use: 'マザーボード全体に給電', r: .55, sw: '#3a3f47' },
+  { id: 'eps8', name: 'CPU 8ピン (EPS)', use: 'CPUに給電', r: .34, sw: '#4a6a8a' },
+  { id: 'pcie8', name: 'PCIe 8ピン', use: 'グラボに給電', r: .34, sw: '#8a6a3a' }
+];
+const SOCKETS = [
+  { id: 'atx24', label: 'マザーボードの24ピン' },
+  { id: 'eps8', label: 'マザーボード左上のCPU用8ピン' },
+  { id: 'pcie8', label: 'グラボの8ピン' }
+];
+function wireDefs() {
+  const cx = -20 + B.gpu.len - 3, L = CL();
+  const fx = Math.min(8.5, L.frontIn - 2.4 - (B.cooler.type === 'aio' ? 2.7 : 0) - 1.6);
+  const py = Math.max(-8, L.shroudTop + 1.6);
+  return {
+    atx24: { anchor: V3(6.2, 10, -10.8), rest: V3(fx, 6, 1), target: V3(4.45, 10, -8.9), dir: V3(-1, 0, 0),
+      plug: [1.6, 5, 1.4], sock: { pos: V3(3.2, 10, -8.9), size: [1.6, 5.8, 1.9] } },
+    eps8: { anchor: V3(-15.8, 21.8, -10.8), rest: V3(-12, 21.6, 1), target: V3(-17, 20.8, -9), dir: V3(0, -1, 0),
+      plug: [2.4, 1.2, 1.3], sock: { pos: V3(-17, 19.6, -9), size: [3, 1.6, 1.7] } },
+    pcie8: { anchor: V3(6.2, -4.3, -10.8), rest: V3(fx, py, 4), target: V3(cx, 2.25, .3), dir: V3(0, -1, 0),
+      plug: [2.4, 1.2, 1.3], sock: { pos: V3(cx, 1.15, .3), size: [3, 1.4, 1.8] } }
+  };
+}
+let wires = {}, wireSel = null, wireGroup = null, drag = null, hoverSock = null;
+const sockMat = id => new THREE.MeshBasicMaterial({ color: 0x4cc9f0, transparent: true, opacity: .35, depthWrite: false });
+function cableCurve(w) {
+  const d = w.def, rear = w.pos.clone().addScaledVector(d.dir, -d.plug[2] / 2);
+  return new THREE.CubicBezierCurve3(d.anchor, d.anchor.clone().add(V3(0, 0, 3.2)), rear.clone().addScaledVector(d.dir, -3.5), rear);
+}
+function updateWire(w) {
+  if (w.tube.geometry) w.tube.geometry.dispose();
+  w.tube.geometry = new THREE.TubeGeometry(cableCurve(w), 72, w.cable.r, 12, false);
+  w.plug.position.copy(w.pos);
+}
+function setupWires() {
+  if (wireGroup) pc.remove(wireGroup);
+  wireGroup = new THREE.Group(); pc.add(wireGroup);
+  const defs = wireDefs(); wires = {};
+  CABLES.forEach(cb => {
+    const d = defs[cb.id];
+    const tube = new THREE.Mesh(new THREE.BufferGeometry(), mat(0xffffff, .65, .1, { map: sleeveTex(14) }));
+    tube.castShadow = true;
+    const pm = mat(0x111214, .6, .1, { emissive: 0x000000 });
+    const plug = rbox(...d.plug, pm, 0, 0, 0, null, .12);
+    plug.up.set(0, 0, 1); plug.lookAt(d.dir.clone()); plug.userData.cable = cb.id; plug.castShadow = true;
+    const latch = box(d.plug[0] * .4, .25, .3, pm, 0, d.plug[1] / 2 + .1, 0, plug); latch.userData.cable = cb.id;
+    const sm = sockMat(); const sock = rbox(...d.sock.size, sm, d.sock.pos.x, d.sock.pos.y, d.sock.pos.z, null, .15);
+    sock.userData.sock = cb.id;
+    wireGroup.add(tube, plug, sock);
+    wires[cb.id] = { cable: cb, def: d, tube, plug, sock, sm, pm, pos: d.rest.clone(), done: false };
+    updateWire(wires[cb.id]);
+  });
+  selectWire('atx24');
+}
+function selectWire(id) {
+  wireSel = id; if (steps[idx].type === 'wire') renderStep();
+}
+function renderWires(list) {
+  const lab = document.createElement('div'); lab.className = 'optLabel';
+  lab.textContent = 'つなぐケーブルを選ぶ'; list.appendChild(lab);
+  CABLES.forEach(cb => {
+    const w = wires[cb.id]; if (!w) return;
+    const b = document.createElement('button');
+    b.className = 'opt cab' + (w.done ? ' done' : '') + (wireSel === cb.id && !w.done ? ' sel' : '');
+    b.innerHTML = `<span class="sw" style="background:${cb.sw}"></span><div><div class="n"></div><div class="s"></div></div><span class="st">${w.done ? '接続済み' : '未接続'}</span>`;
+    b.querySelector('.n').textContent = cb.name; b.querySelector('.s').textContent = cb.use;
+    if (!w.done) b.onclick = () => { sfx.pick(); selectWire(cb.id); };
+    list.appendChild(b);
+  });
+}
+function toScreen(v) {
+  const p = v.clone(); pc.localToWorld(p); p.project(camera);
+  const r = canvas.getBoundingClientRect();
+  return { x: (p.x + 1) / 2 * r.width + r.left, y: (1 - p.y) / 2 * r.height + r.top };
+}
+function nearestSock(e, maxPx) {
+  let best = null, bd = maxPx;
+  Object.values(wires).forEach(w => {
+    if (w.done) return;
+    const s = toScreen(w.def.sock.pos), d = Math.hypot(s.x - e.clientX, s.y - e.clientY);
+    if (d < bd) { bd = d; best = w; }
+  });
+  return best;
+}
+function wireDown(e) {
+  if (!steps[idx] || steps[idx].type !== 'wire' || busy) return false;
+  const plugs = Object.values(wires).filter(w => !w.done).map(w => w.plug);
+  const h = pick(e, plugs); if (!h) return false;
+  let o = h.object; while (o && !o.userData.cable) o = o.parent;
+  const w = wires[o.userData.cable];
+  if (wireSel !== w.cable.id) selectWire(w.cable.id);
+  const n = camera.getWorldDirection(V3(0, 0, 0)).negate();
+  drag = { w, plane: new THREE.Plane().setFromNormalAndCoplanarPoint(n, w.pos.clone()) };
+  controls.enabled = false; canvas.style.cursor = 'grabbing'; sfx.pick();
+  return true;
+}
+function wireMove(e) {
+  const r = canvas.getBoundingClientRect(), hit = V3(0, 0, 0);
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  if (ray.ray.intersectPlane(drag.plane, hit)) { drag.w.pos.copy(hit); updateWire(drag.w); }
+  hoverSock = nearestSock(e, 70);
+}
+async function wireUp(e) {
+  const w = drag.w; drag = null; controls.enabled = true; canvas.style.cursor = 'grab';
+  const s = nearestSock(e, 60); hoverSock = null;
+  const from = w.pos.clone();
+  busy = true;
+  if (s && s === w) {
+    await tween(320, k => { w.pos.lerpVectors(from, w.def.target, k); updateWire(w); });
+    w.done = true; w.sock.visible = false; w.pm.emissive.set(0); sfx.click();
+    named(w.plug, w.cable.name); installed.push(w.plug, w.tube); w.tube.userData.name = w.cable.name;
+    toast('「' + w.cable.name + '」をつなぎました', 'ok');
+    const left = CABLES.find(c => !wires[c.id].done);
+    busy = false;
+    if (left) selectWire(left.id); else { renderStep(); setTimeout(() => { toast('3本ともつながりました！', 'ok'); next(); }, 900); }
+    return;
+  }
+  if (s) {
+    sfx.err();
+    const sock = SOCKETS.find(x => x.id === s.cable.id);
+    const why = w.cable.id === 'atx24' || s.cable.id === 'atx24' ? `「${w.cable.name}」とはピンの数が違います。` : 'CPU用（EPS）とグラボ用（PCIe）の8ピンは、ツメと穴の形が違うので挿さりません。';
+    toast(`形が合いません。ここは「${sock.label}」の差し込み口です。${why}`, 'error');
+  }
+  await tween(450, k => { w.pos.lerpVectors(from, w.def.rest, k); updateWire(w); });
+  busy = false;
+}
+function wireTick(now) {
+  Object.values(wires).forEach(w => {
+    if (w.done) return;
+    const pulse = .5 + .5 * Math.sin(now / 260);
+    if (hoverSock === w && drag) w.sm.color.set(drag.w === w ? 0x7bf1a8 : 0xff6b6b);
+    else if (drag && hoverSock && hoverSock !== w) w.sm.color.set(0x4cc9f0);
+    else w.sm.color.set(0x4cc9f0);
+    w.sm.opacity = .2 + .25 * pulse;
+    w.pm.emissive.setRGB(0, 0, 0);
+    if (wireSel === w.cable.id && !(drag && drag.w === w)) w.pm.emissive.setRGB(.05 + .25 * pulse, .25 + .5 * pulse, .35 + .6 * pulse);
+  });
+}
+
+function targets() { return steps[idx] && steps[idx].type === 'power' ? [ghost, powerBtn] : [staging, ghost]; }
+let down = null;
+canvas.addEventListener('pointerdown', e => {
+  controls.autoRotate = false;
+  if (wireDown(e)) { canvas.setPointerCapture(e.pointerId); down = null; return; }
+  down = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointerup', e => {
+  if (drag) { wireUp(e); return; }
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null;
+  if (moved < 6 && !finished && pick(e, targets())) attempt();
+});
+const tip = $('#tooltip');
+canvas.addEventListener('pointermove', e => {
+  if (drag) { tip.style.display = 'none'; wireMove(e); return; }
+  if (e.buttons) { tip.style.display = 'none'; return; }
+  if (steps[idx] && steps[idx].type === 'wire' && !finished) {
+    const h = pick(e, Object.values(wires).filter(w => !w.done).map(w => w.plug));
+    if (h) { canvas.style.cursor = 'grab'; let o = h.object; while (o && !o.userData.cable) o = o.parent;
+      const r = view.getBoundingClientRect(); tip.textContent = wires[o.userData.cable].cable.name + '（ドラッグでつなぐ）';
+      tip.style.display = 'block'; tip.style.left = (e.clientX - r.left + 14) + 'px'; tip.style.top = (e.clientY - r.top + 14) + 'px'; return; }
+  }
+  const over = !finished && pick(e, targets());
+  canvas.style.cursor = over ? 'pointer' : 'grab';
+  let name = null;
+  if (!over) {
+    const h = pick(e, installed.concat(caseG ? [caseG] : []));
+    if (h) { let o = h.object; while (o && !o.userData.name) o = o.parent; name = o && o.userData.name; }
+  } else name = steps[idx].type === 'power' ? '電源ボタン' : 'クリックで取り付け';
+  if (name) {
+    const r = view.getBoundingClientRect();
+    tip.textContent = name; tip.style.display = 'block';
+    tip.style.left = (e.clientX - r.left + 14) + 'px'; tip.style.top = (e.clientY - r.top + 14) + 'px';
+  } else tip.style.display = 'none';
+});
+canvas.addEventListener('pointerleave', () => tip.style.display = 'none');
+
+/* ================= loop ================= */
+let last = performance.now();
+const tmpC = new THREE.Color();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  runTweens(now);
+  if (staging && !busy) {
+    const b = staging.userData.base, o = staging.userData.off;
+    staging.position.set(b.x + o.x, b.y + o.y + Math.sin(now / 420) * .4, b.z + o.z);
+  }
+  ghostMat.opacity = .16 + .16 * (.5 + .5 * Math.sin(now / 260));
+  wireTick(now);
+  fanSpeed += (fanTarget - fanSpeed) * dt * .9;
+  rotors.forEach(r => r.rotation.z += fanSpeed * dt * 22);
+  if (fanTarget > 0) {
+    ledLevel += (1 - ledLevel) * dt * 1.2;
+    leds.forEach(({ m, h, i }) => {
+      tmpC.setHSL((now / 5000 + i * .06) % 1, 1, .5);
+      m.emissive.copy(tmpC).multiplyScalar(1.6 * ledLevel);
+      if (h) { h.color.copy(tmpC); h.opacity = .22 * ledLevel; }
+    });
+    rgbLights.forEach((l, i) => { l.color.setHSL((now / 5000 + i * .2) % 1, 1, .55); l.intensity = 1.4 * ledLevel; });
+    powerRing.material.emissive.setRGB(.4 * ledLevel, 1 * ledLevel, 1.4 * ledLevel);
+    if (powerRing.userData.halo) { powerRing.userData.halo.color.setRGB(.3, .8, 1); powerRing.userData.halo.opacity = .3 * ledLevel; }
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+resize();
+setCase(CASES[0]);
+setupStep();
+requestAnimationFrame(loop);
+window.__pcbuild = { attempt, choose, setGlass, B, wires: () => wires, toScreen, get idx() { return idx; } };
+})();
+</script>
+</body>
+</html>
